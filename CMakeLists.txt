@@ -35,6 +35,13 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(liburing CONFIG REQUIRED)
 endif()
 
+add_executable(license_check tools/license_check.cpp)
+add_custom_target(license-check COMMAND $<TARGET_FILE:license_check>
+                  meta/LICENSE_HEADER ${CXX_SOURCES} ${CXX_HEADERS} DEPENDS
+                  license_check WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+                  COMMENT "Checking and applying C++ license headers..."
+                  VERBATIM)
+
 add_library(tungsten-core STATIC ${TUNGSTEN_CORE_SOURCES})
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(tungsten-core PUBLIC liburing::liburing)
@@ -51,3 +58,24 @@ target_compile_options(tungsten-core PRIVATE ${TUNGSTEN_ARGUMENT})
 add_executable(tungsten src/main.cpp)
 target_link_libraries(tungsten PUBLIC tungsten-core)
 target_compile_options(tungsten PRIVATE ${TUNGSTEN_ARGUMENT})
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+    set(HOOK_CONTENT
+"#!/bin/sh
+echo 'Running automatic license header check...'
+cmake --build \"${CMAKE_BINARY_DIR}\" --target license-check
+"
+    )
+
+    file(GENERATE
+        OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit"
+        CONTENT "${HOOK_CONTENT}"
+    )
+
+    if(NOT WIN32)
+        add_custom_target(patch_git_hook_permissions ALL
+            COMMAND chmod +x "${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit"
+            VERBATIM
+        )
+    endif()
+
+endif()

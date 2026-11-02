@@ -11,11 +11,16 @@ find . -type d -path "./inc*" -exec mkdir -p "${SHADOW_DIR}/{}" \;
 find . -type f -path "./inc*" -exec ln -f "{}" "${SHADOW_DIR}/{}" \;
 find . -type d -path "./script*" -exec mkdir -p "${SHADOW_DIR}/{}" \;
 find . -type f -path "./script*" -exec ln -f "{}" "${SHADOW_DIR}/{}" \;
+find . -type d -path "./meta*" -exec mkdir -p "${SHADOW_DIR}/{}" \;
+find . -type f -path "./meta*" -exec ln -f "{}" "${SHADOW_DIR}/{}" \;
+find . -type d -path "./tools*" -exec mkdir -p "${SHADOW_DIR}/{}" \;
+find . -type f -path "./tools*" -exec ln -f "{}" "${SHADOW_DIR}/{}" \;
 ln -f conanfile.py ${SHADOW_DIR}/conanfile.py
 ln -f CMakeLists.txt ${SHADOW_DIR}/CMakeLists.txt
 ln -f LICENSE ${SHADOW_DIR}/LICENSE
 ln -f README.md ${SHADOW_DIR}/README.md
 ln -f .clangd ${SHADOW_DIR}/.clangd
+ln -f .gitignore ${SHADOW_DIR}/.gitignore
 
 pushd $SHADOW_DIR
 git add .
