@@ -13,7 +13,7 @@ file(GLOB_RECURSE TUNGSTEN_CORE_SOURCES "lib/*.cpp")
 file(GLOB_RECURSE TUNGSTEN_CORE_HEADERS "inc/*.hpp")
 
 set(TUNGSTEN_ARGUMENT_BASE -Wall -Wextra -Werror -s -fPIC -march=x86-64-v3
-  -Ofast -flto=auto -fno-rtti)
+  -Ofast -flto=auto)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(TUNGSTEN_ARGUMENT ${TUNGSTEN_ARGUMENT_BASE}
         -DASIO_HAS_IO_URING -DASIO_DISABLE_EPOLL -fuse-ld=mold)
