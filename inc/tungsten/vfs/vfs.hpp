@@ -16,6 +16,7 @@
 #include "vfs_struct.hpp"
 #include "vfs_fileinfo.hpp"
 #include <shared_mutex>
+#include <tungsten/util/file_io.hpp>
 
 namespace tungsten {
 
@@ -67,6 +68,47 @@ public:
     static bool is_absolute(std::string_view path);
     static std::string to_absolute(std::string_view base, std::string_view path);
     static std::string normalize_absolute(std::string_view path);
+};
+
+struct vfs_file_handle_t final : public file_handle_t {
+private:
+    std::string m_path;
+    std::ios::openmode m_mode;
+    std::atomic<size_t> m_offset;
+public:
+    vfs_file_handle_t() : m_mode(std::ios::ate) {
+        m_offset.store(0);
+    }
+    vfs_file_handle_t(std::string_view path, std::ios::openmode mode = std::ios::in | std::ios::out) {
+        open(path, mode);
+    }
+    ~vfs_file_handle_t() {
+        close();
+    }
+
+    vfs_file_handle_t(const vfs_file_handle_t&) = delete;
+    void operator=(const vfs_file_handle_t&) = delete;
+
+    vfs_file_handle_t(vfs_file_handle_t&& other) = delete;
+    void operator=(vfs_file_handle_t&& other) = delete;
+
+    bool open(std::string_view path, std::ios::openmode flags) override;
+    void close() override;
+
+    bool is_open() const override;
+    bool can_read() const override;
+    bool can_write() const override;
+    std::ios::openmode mode() const override;
+    std::string_view path() const override;
+    size_t size() const override;
+
+    bool read(uint8_t* dest, size_t length) override;
+    bool read_at(size_t pos, uint8_t* dest, size_t length) override;
+    void write(const uint8_t* src, size_t length) override;
+    void write_at(size_t pos, const uint8_t* src, size_t length) override;
+
+    size_t tell() const override;
+    size_t seek(int64_t pos, file_io_whence_t whence = file_io_whence_t::START) override;
 };
 
 extern std::shared_ptr<vfs_t> g_vfs;

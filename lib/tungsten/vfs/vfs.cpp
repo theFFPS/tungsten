@@ -11,6 +11,7 @@
 
  */
 
+#include <iostream>
 #include <tungsten/vfs/vfs.hpp>
 #include <tungsten/vfs/ramfs.hpp>
 #include <mutex>
@@ -155,6 +156,7 @@ bool vfs_t::read_at(std::string_view path, size_t offset, uint8_t* dest, size_t 
     return dirent->m_file_system.lock()->read_at(path, offset, dest, length, dirent);
 }
 void vfs_t::write(std::string_view path, const uint8_t* src, size_t length) {
+    if (!exists(path)) touch(path);
     std::shared_ptr<vfs_dirent_t> dirent;
     {
         std::shared_lock lock (m_mutex);
@@ -166,6 +168,7 @@ void vfs_t::write(std::string_view path, const uint8_t* src, size_t length) {
     dirent->m_file_system.lock()->write(path, src, length, dirent);
 }
 void vfs_t::write_at(std::string_view path, size_t offset, const uint8_t* src, size_t length) {
+    if (!exists(path)) touch(path);
     std::shared_ptr<vfs_dirent_t> dirent;
     {
         std::shared_lock lock (m_mutex);
@@ -288,6 +291,113 @@ std::string vfs_t::normalize_absolute(std::string_view path) {
     }
     if (normalized_path.empty()) return "/";
     return normalized_path;
+}
+
+bool vfs_file_handle_t::open(std::string_view path, std::ios::openmode flags) {
+    if (m_path != path) {
+        m_path = path;
+        m_mode = flags;
+        asio::file_base::flags asio_flags;
+        if (flags & std::ios::out) {
+            if (flags & std::ios::in) asio_flags = asio::file_base::flags::read_write;
+            else asio_flags = asio::file_base::flags::write_only | asio::file_base::flags::create;
+        } else {
+            if (flags & std::ios::out) asio_flags = asio::file_base::flags::read_write;
+            else asio_flags = asio::file_base::flags::read_only;
+        }
+        if (flags & std::ios::trunc) asio_flags |= asio::file_base::flags::truncate;
+        if (flags & std::ios::app) asio_flags |= asio::file_base::flags::append;
+        if (flags & std::ios::ate) m_offset.store(size());
+        else m_offset.store(0);
+
+        if (flags & std::ios::out && !g_vfs->exists(path)) g_vfs->touch(path);
+        return is_open();
+    }
+    return false;
+}
+void vfs_file_handle_t::close() {
+    if (is_open()) {
+        m_path = "";
+        m_mode = std::ios::ate;
+    }
+}
+
+bool vfs_file_handle_t::is_open() const {
+    return g_vfs->exists(m_path);
+}
+bool vfs_file_handle_t::can_read() const {
+    return m_mode & std::ios::in;
+}
+bool vfs_file_handle_t::can_write() const {
+    return m_mode & std::ios::out;
+}
+std::ios::openmode vfs_file_handle_t::mode() const {
+    return m_mode;
+}
+std::string_view vfs_file_handle_t::path() const {
+    return m_path;
+}
+size_t vfs_file_handle_t::size() const {
+    return g_vfs->file_size(m_path);
+}
+
+bool vfs_file_handle_t::read(uint8_t* dest, size_t length) {
+    if (!is_open()) throw std::runtime_error("vfs_file_handle_t::read error: file handle is not open");
+    if (!can_read()) throw std::runtime_error("vfs_file_handle_t::read error: file handle is not open in read mode");
+    return g_vfs->read_at(m_path, seek(length, file_io_whence_t::CUR), dest, length);
+}
+
+bool vfs_file_handle_t::read_at(size_t pos, uint8_t* dest, size_t length) {
+    if (!is_open()) throw std::runtime_error("vfs_file_handle_t::read_at error: file handle is not open");
+    if (!can_read()) throw std::runtime_error("vfs_file_handle_t::read_at error: file handle is not open in read mode");
+    return g_vfs->read_at(m_path, pos, dest, length);
+}
+
+void vfs_file_handle_t::write(const uint8_t* src, size_t length) {
+    if (!is_open()) throw std::runtime_error("vfs_file_handle_t::write error: file handle is not open");
+    if (!can_write()) throw std::runtime_error("vfs_file_handle_t::write error: file handle is not open in write mode");
+    g_vfs->write_at(m_path, seek(length, file_io_whence_t::CUR), src, length);
+}
+
+void vfs_file_handle_t::write_at(size_t pos, const uint8_t* src, size_t length) {
+    if (!is_open()) throw std::runtime_error("vfs_file_handle_t::write_at error: file handle is not open");
+    if (!can_write()) throw std::runtime_error("vfs_file_handle_t::write_at error: file handle is not open in write mode");
+    g_vfs->write_at(m_path, pos, src, length);
+}
+
+size_t vfs_file_handle_t::tell() const {
+    if (!is_open()) throw std::runtime_error("vfs_file_handle_t::tell error: file handle is not open");
+    return m_offset.load();
+}
+size_t vfs_file_handle_t::seek(int64_t pos, file_io_whence_t whence) {
+    size_t pos_prev = tell(), filesize = size();
+    switch (whence) {
+    case file_io_whence_t::START: {
+        m_offset.store(pos);
+        break;
+    }
+    case file_io_whence_t::CUR: {
+        if (pos < 0) {
+            int64_t pos_positive = -pos;
+            size_t pos_unsigned_safe = pos_positive;
+            if (pos_prev >= pos_unsigned_safe) m_offset.fetch_sub(pos_unsigned_safe);
+            else m_offset.store(0);
+        } else m_offset.fetch_add(pos);
+        break;
+    }
+    case file_io_whence_t::END: {
+        if (pos < 0) {
+            int64_t pos_positive = -pos;
+            size_t pos_unsigned_safe = pos_positive;
+            if (pos_prev >= pos_unsigned_safe) m_offset.fetch_sub(pos_unsigned_safe);
+            else m_offset.store(0);
+        }
+        break;
+    }
+    default: break;
+    }
+    if (tell() > filesize) m_offset.store(filesize);
+    return pos_prev;
 }
 
 }

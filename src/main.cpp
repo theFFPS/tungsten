@@ -50,13 +50,14 @@ int main() {
     g_vfs = std::make_shared<vfs_t>();
     g_vfs->initialize();
 
-    g_vfs->touch("/Hello");
-
     std::string test = "Hello World!";
-    g_vfs->write("/Hello", (const uint8_t*) test.data(), test.size());
-
-    std::vector<uint8_t> data (g_vfs->file_size("/Hello"));
-    g_vfs->read("/Hello", data.data(), g_vfs->file_size("/Hello"));
+    auto handle = vfs_file_handle_t("/test.file", std::ios::out);
+    handle.write((const uint8_t*) test.data(), test.size());
+    handle.close();
+    handle.open("/test.file", std::ios::in);
+    std::vector<uint8_t> data (handle.size());
+    handle.read(data.data(), data.size());
+    handle.close();
 
     std::cout << std::string_view((const char*) data.data(), data.size()) << "\n";
 
