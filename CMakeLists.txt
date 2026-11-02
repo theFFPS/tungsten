@@ -58,6 +58,7 @@ target_compile_options(tungsten-core PRIVATE ${TUNGSTEN_ARGUMENT})
 add_executable(tungsten src/main.cpp)
 target_link_libraries(tungsten PUBLIC tungsten-core)
 target_compile_options(tungsten PRIVATE ${TUNGSTEN_ARGUMENT})
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
     set(HOOK_CONTENT
 "#!/bin/sh
