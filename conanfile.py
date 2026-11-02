@@ -1,17 +1,23 @@
 from conan import ConanFile
 from conan.tools.cmake import cmake_layout
 
-class fengine(ConanFile):
+class tungsten(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeDeps", "CMakeToolchain"
 
     def requirements(self):
         # Security
-        self.requires("openssl/4.1.0")
+        self.requires("openssl/4.1.0", override=True)
         self.requires("libsodium/1.0.22")
 
         # UI
         self.requires("libqrencode/4.1.1")
+        self.requires("vk-bootstrap/1.4.350")
+        self.requires("vulkan-headers/1.4.350.0")
+        self.requires("vulkan-validationlayers/1.4.350.0")
+        self.requires("vulkan-memory-allocator/3.3.0")
+        self.requires("sdl/3.4.16")
+        self.requires("glm/1.0.3")
 
         # Compression
         self.requires("zstd/1.5.7")

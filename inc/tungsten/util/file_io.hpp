@@ -26,7 +26,7 @@ enum class file_io_whence_t : uint8_t { START, CUR, END };
 struct file_handle_t {
     virtual ~file_handle_t() = default;
 
-    virtual bool open(const std::string_view& path, std::ios::openmode flags) = 0;
+    virtual bool open(std::string_view path, std::ios::openmode flags) = 0;
     virtual void close() = 0;
 
     virtual bool is_open() const = 0;
@@ -56,7 +56,7 @@ public:
     asio_file_handle_t() : m_mode(std::ios::ate) {
         m_offset.store(0);
     }
-    asio_file_handle_t(const std::string_view& path, std::ios::openmode mode = std::ios::in | std::ios::out) {
+    asio_file_handle_t(std::string_view path, std::ios::openmode mode = std::ios::in | std::ios::out) {
         open(path, mode);
     }
     ~asio_file_handle_t() {
@@ -69,7 +69,7 @@ public:
     asio_file_handle_t(asio_file_handle_t&& other) = delete;
     void operator=(asio_file_handle_t&& other) = delete;
 
-    bool open(const std::string_view& path, std::ios::openmode flags) override;
+    bool open(std::string_view path, std::ios::openmode flags) override;
     void close() override;
 
     bool is_open() const override;

@@ -18,7 +18,7 @@ namespace tungsten {
 
 std::shared_ptr<asio::io_context> g_file_io_ctx;
 
-bool asio_file_handle_t::open(const std::string_view& path, std::ios::openmode flags) {
+bool asio_file_handle_t::open(std::string_view path, std::ios::openmode flags) {
     if (!is_open()) {
         m_path = path;
         m_mode = flags;

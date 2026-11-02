@@ -11,8 +11,9 @@
 
  */
 
-#include <exception>
 #include <iostream>
+#include <memory>
+#include <tungsten/vfs/vfs.hpp>
 #include <tungsten/crypto/shared.hpp>
 #include <sys/resource.h>
 
@@ -46,27 +47,40 @@ int main() {
     });
     // worker_thread.detach();
 
-    try {
-        std::string test = "Hello World!";
+    g_vfs = std::make_shared<vfs_t>();
+    g_vfs->initialize();
 
-        auto file_handle = asio_file_handle_t("test.file", std::ios::out);
-        file_handle.write((const uint8_t*) test.data(), test.size());
-        file_handle.close();
-        file_handle.open("test.file", std::ios::in);
-        std::vector<uint8_t> buffer (file_handle.size());
-        file_handle.read(buffer.data(), buffer.size());
-        file_handle.close();
+    g_vfs->touch("/Hello");
 
-        std::cout << std::string_view((const char*) buffer.data(), buffer.size()) << "\n";
+    std::string test = "Hello World!";
+    g_vfs->write("/Hello", (const uint8_t*) test.data(), test.size());
 
-        while (1) {
-            std::string s;
-            std::cin >> s;
-            break;
-        }
-    } catch (std::exception& e) {
-        std::cout << e.what() << "\n";
-    }
+    std::vector<uint8_t> data (g_vfs->file_size("/Hello"));
+    g_vfs->read("/Hello", data.data(), g_vfs->file_size("/Hello"));
+
+    std::cout << std::string_view((const char*) data.data(), data.size()) << "\n";
+
+//     try {
+//         std::string test = "Hello World!";
+//
+//         auto file_handle = asio_file_handle_t("test.file", std::ios::out);
+//         file_handle.write((const uint8_t*) test.data(), test.size());
+//         file_handle.close();
+//         file_handle.open("test.file", std::ios::in);
+//         std::vector<uint8_t> buffer (file_handle.size());
+//         file_handle.read(buffer.data(), buffer.size());
+//         file_handle.close();
+//
+//         std::cout << std::string_view((const char*) buffer.data(), buffer.size()) << "\n";
+//
+//         while (1) {
+//             std::string s;
+//             std::cin >> s;
+//             break;
+//         }
+    // } catch (std::exception& e) {
+    //     std::cout << e.what() << "\n";
+    // }
 
     work_guard.reset();
     if (worker_thread.joinable()) worker_thread.join();

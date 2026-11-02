@@ -13,7 +13,7 @@ file(GLOB_RECURSE TUNGSTEN_CORE_SOURCES "lib/*.cpp")
 file(GLOB_RECURSE TUNGSTEN_CORE_HEADERS "inc/*.hpp")
 
 set(TUNGSTEN_ARGUMENT_BASE -Wall -Wextra -Werror -s -fPIC -march=x86-64-v3
-  -Ofast -flto=auto)
+  -Ofast -flto=auto -freflection)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(TUNGSTEN_ARGUMENT ${TUNGSTEN_ARGUMENT_BASE}
         -DASIO_HAS_IO_URING -DASIO_DISABLE_EPOLL -fuse-ld=mold)
@@ -32,6 +32,12 @@ find_package(libqrencode REQUIRED)
 find_package(stduuid CONFIG REQUIRED)
 find_package(glaze REQUIRED)
 find_package(libsodium REQUIRED)
+find_package(VulkanHeaders REQUIRED)
+find_package(vk-bootstrap REQUIRED)
+find_package(vulkan-validationlayers REQUIRED)
+find_package(VulkanMemoryAllocator REQUIRED)
+find_package(SDL3 REQUIRED)
+find_package(glm REQUIRED)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(liburing CONFIG REQUIRED)
 endif()
@@ -45,7 +51,7 @@ add_custom_target(license-check COMMAND $<TARGET_FILE:license_check>
 
 add_library(tungsten-core STATIC ${TUNGSTEN_CORE_SOURCES})
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(tungsten-core PUBLIC liburing::liburing)
+    target_link_libraries(tungsten-core PUBLIC liburing::liburing decor-0)
 endif()
 target_link_libraries(tungsten-core PUBLIC
   zstd::libzstd_static zlib-ng::zlib-ng
@@ -53,6 +59,11 @@ target_link_libraries(tungsten-core PUBLIC
   asio::asio
   glaze::glaze
   stduuid::stduuid
+  vulkan-headers::vulkan-headers
+  vk-bootstrap::vk-bootstrap
+  vulkan-validationlayers::vulkan-validationlayers
+  GPUOpen::VulkanMemoryAllocator
+  SDL3::SDL3-static glm::glm
 )
 target_compile_options(tungsten-core PRIVATE ${TUNGSTEN_ARGUMENT})
 
