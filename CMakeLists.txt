@@ -10,6 +10,7 @@ set(CMAKE_JOB_POOL_LINK link_pool)
 set_property(GLOBAL PROPERTY JOB_POOLS link_pool=4)
 
 file(GLOB_RECURSE TUNGSTEN_CORE_SOURCES "lib/*.cpp")
+file(GLOB_RECURSE TUNGSTEN_CORE_HEADERS "inc/*.hpp")
 
 set(TUNGSTEN_ARGUMENT_BASE -Wall -Wextra -Werror -s -fPIC -march=x86-64-v3
   -Ofast -flto=auto -fno-rtti)
@@ -37,10 +38,10 @@ endif()
 
 add_executable(license_check tools/license_check.cpp)
 add_custom_target(license-check COMMAND $<TARGET_FILE:license_check>
-                  meta/LICENSE_HEADER ${CXX_SOURCES} ${CXX_HEADERS} DEPENDS
-                  license_check WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-                  COMMENT "Checking and applying C++ license headers..."
-                  VERBATIM)
+                  meta/LICENSE_HEADER ${TUNGSTEN_CORE_SOURCES}
+                  ${TUNGSTEN_CORE_HEADERS} src/main.cpp DEPENDS license_check
+                  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" COMMENT
+                  "Checking and applying C++ license headers..." VERBATIM)
 
 add_library(tungsten-core STATIC ${TUNGSTEN_CORE_SOURCES})
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
