@@ -3,3 +3,6 @@ CMakeUserPresets.json
 build
 .vscode
 tungsten-github
+
+# contains proprietary game files:
+test

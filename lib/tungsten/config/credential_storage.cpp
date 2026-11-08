@@ -115,8 +115,8 @@ void credential_storage_entry_t::unlock(credential_holder_t<uint8_t>& dest, cred
     std::vector<uint8_t, tungsten::secure_allocator_t<uint8_t>> plain;
     {
         aes256_gcm_t aes(key);
-        secure_zero(key.data(), key.size());
         plain = aes.decrypt(std::span<const uint8_t>(m_credential_data, l_max_data_size), aad);
+        secure_zero(key.data(), key.size());
     }
 
     if (plain.size() < credential_size()) {
@@ -171,8 +171,8 @@ credential_storage_entry_t credential_storage_entry_t::lock(
             secure_zero(credential.data(), credential.size());
 
             aes256_gcm_t aes(key);
-            secure_zero(key.data(), key.size());
             auto encrypted = aes.encrypt(padded, aad);
+            secure_zero(key.data(), key.size());
             secure_zero(padded);
 
             if (encrypted.size() != l_max_data_size) {

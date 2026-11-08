@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <memory>
 #include <tungsten/util/allocator.hpp>
 #include <cstdint>
 #include <string>
@@ -31,7 +32,7 @@ enum class credential_storage_entry_encryption_type_t : uint8_t {
 
 template<typename T> requires std::integral<T> struct credential_holder_t {
 private:
-    std::vector<T, secure_allocator_t<uint8_t>> m_credential;
+    std::vector<T, secure_allocator_t<T>> m_credential;
 public:
     explicit credential_holder_t(size_t size) : m_credential(size) {}
     ~credential_holder_t() noexcept { cleanse(); }
@@ -49,10 +50,10 @@ public:
     T*       data()       noexcept { return m_credential.data(); }
     const T* data() const noexcept { return m_credential.data(); }
 
-    using iterator               = typename std::vector<T, secure_allocator_t<uint8_t>>::iterator;
-    using const_iterator         = typename std::vector<T, secure_allocator_t<uint8_t>>::const_iterator;
-    using reverse_iterator       = typename std::vector<T, secure_allocator_t<uint8_t>>::reverse_iterator;
-    using const_reverse_iterator = typename std::vector<T, secure_allocator_t<uint8_t>>::const_reverse_iterator;
+    using iterator               = typename std::vector<T, secure_allocator_t<T>>::iterator;
+    using const_iterator         = typename std::vector<T, secure_allocator_t<T>>::const_iterator;
+    using reverse_iterator       = typename std::vector<T, secure_allocator_t<T>>::reverse_iterator;
+    using const_reverse_iterator = typename std::vector<T, secure_allocator_t<T>>::const_reverse_iterator;
 
     iterator begin() noexcept { return m_credential.begin(); }
     iterator end()   noexcept { return m_credential.end(); }
@@ -84,7 +85,7 @@ struct credential_storage_entry_t {
     credential_storage_entry_t(credential_storage_entry_t&&) = default;
     credential_storage_entry_t& operator=(credential_storage_entry_t&&) = default;
     ~credential_storage_entry_t() noexcept {
-        memset_explicit(this, 0, sizeof(*this));
+        memset_explicit(&m_credential_data, 0, sizeof(m_credential_data));
     }
 
     credential_storage_entry_type_t type() const noexcept;
@@ -106,7 +107,7 @@ struct credential_storage_entry_t {
 
 struct credential_storage_t {
     std::string m_credential_storage_name;
-    std::vector<credential_storage_entry_t> m_credentials;
+    std::vector<std::unique_ptr<credential_storage_entry_t>> m_credentials;
 };
 struct credential_storage_disk_t {
     uint32_t m_magic;

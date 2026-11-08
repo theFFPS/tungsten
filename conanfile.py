@@ -18,15 +18,28 @@ class tungsten(ConanFile):
         self.requires("vulkan-memory-allocator/3.3.0")
         self.requires("sdl/3.4.16")
         self.requires("glm/1.0.3")
+        self.requires("ktx/4.4.2")
+        self.requires("stb/cci.20261021")
+        self.requires("freetype/2.15.0")
+        self.requires("meshoptimizer/1.0")
+        self.requires("harfbuzz/15.0.0")
+
+        # Game-loop
+        self.requires("fastnoise2/1.1.1")
+        self.requires("joltphysics/5.6.0")
 
         # Compression
         self.requires("zstd/1.5.7")
         self.requires("zlib-ng/2.3.2")
+        self.requires("miniz/3.1.1")
 
         # Utils
         self.requires("stduuid/1.2.3")
-        self.requires("spdlog/1.16.0")
-        self.requires("glaze/8.4.0")
+        self.requires("spdlog/1.15.3")
+        self.requires("onetbb/2023.1.0")
+        self.requires("mimalloc/3.5.1")
+        self.requires("tracy/0.14.1")
+        self.requires("nlohmann_json/3.12.0")
 
         # I/O
         self.requires("asio/1.38.0")

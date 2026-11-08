@@ -11,7 +11,7 @@
 
  */
 
-#include <iostream>
+#include "tungsten/resource/builtin_registries.hpp"
 #include <memory>
 #include <tungsten/vfs/vfs.hpp>
 #include <tungsten/crypto/shared.hpp>
@@ -50,38 +50,7 @@ int main() {
     g_vfs = std::make_shared<vfs_t>();
     g_vfs->initialize();
 
-    std::string test = "Hello World!";
-    auto handle = vfs_file_handle_t("/test.file", std::ios::out);
-    handle.write((const uint8_t*) test.data(), test.size());
-    handle.close();
-    handle.open("/test.file", std::ios::in);
-    std::vector<uint8_t> data (handle.size());
-    handle.read(data.data(), data.size());
-    handle.close();
-
-    std::cout << std::string_view((const char*) data.data(), data.size()) << "\n";
-
-//     try {
-//         std::string test = "Hello World!";
-//
-//         auto file_handle = asio_file_handle_t("test.file", std::ios::out);
-//         file_handle.write((const uint8_t*) test.data(), test.size());
-//         file_handle.close();
-//         file_handle.open("test.file", std::ios::in);
-//         std::vector<uint8_t> buffer (file_handle.size());
-//         file_handle.read(buffer.data(), buffer.size());
-//         file_handle.close();
-//
-//         std::cout << std::string_view((const char*) buffer.data(), buffer.size()) << "\n";
-//
-//         while (1) {
-//             std::string s;
-//             std::cin >> s;
-//             break;
-//         }
-    // } catch (std::exception& e) {
-    //     std::cout << e.what() << "\n";
-    // }
+    parse_builtin("test/data/minecraft");
 
     work_guard.reset();
     if (worker_thread.joinable()) worker_thread.join();

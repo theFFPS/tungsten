@@ -25,8 +25,7 @@ template <typename T> struct secure_allocator_t {
 
     secure_allocator_t() noexcept = default;
 
-    template <typename U>
-    secure_allocator_t(const secure_allocator_t<U>&) noexcept {}
+    template <typename U> secure_allocator_t(const secure_allocator_t<U>&) noexcept {}
 
     T* allocate(std::size_t n) {
         if (n == 0) return nullptr;

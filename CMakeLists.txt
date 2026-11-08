@@ -30,14 +30,26 @@ find_package(spdlog REQUIRED)
 find_package(asio REQUIRED)
 find_package(libqrencode REQUIRED)
 find_package(stduuid CONFIG REQUIRED)
-find_package(glaze REQUIRED)
 find_package(libsodium REQUIRED)
 find_package(VulkanHeaders REQUIRED)
 find_package(vk-bootstrap REQUIRED)
 find_package(vulkan-validationlayers REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 find_package(SDL3 REQUIRED)
+find_package(Ktx REQUIRED)
 find_package(glm REQUIRED)
+find_package(TBB REQUIRED)
+find_package(FastNoise2 REQUIRED)
+find_package(freetype CONFIG REQUIRED)
+find_package(Freetype REQUIRED)
+find_package(stb REQUIRED)
+find_package(mimalloc REQUIRED)
+find_package(meshoptimizer REQUIRED)
+find_package(Tracy REQUIRED)
+find_package(harfbuzz REQUIRED)
+find_package(Jolt REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(miniz REQUIRED)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(liburing CONFIG REQUIRED)
 endif()
@@ -57,13 +69,16 @@ target_link_libraries(tungsten-core PUBLIC
   zstd::libzstd_static zlib-ng::zlib-ng
   OpenSSL::SSL OpenSSL::Crypto libsodium::libsodium
   asio::asio
-  glaze::glaze
   stduuid::stduuid
   vulkan-headers::vulkan-headers
   vk-bootstrap::vk-bootstrap
   vulkan-validationlayers::vulkan-validationlayers
   GPUOpen::VulkanMemoryAllocator
-  SDL3::SDL3-static glm::glm
+  SDL3::SDL3-static glm::glm KTX::ktx
+  spdlog::spdlog fastnoise2::fastnoise2
+  Freetype::Freetype TBB::tbb stb::stb nlohmann_json::nlohmann_json
+  mimalloc-static meshoptimizer::meshoptimizer Tracy::TracyClient
+  Jolt::Jolt miniz::miniz harfbuzz::harfbuzz
 )
 target_compile_options(tungsten-core PRIVATE ${TUNGSTEN_ARGUMENT})
 

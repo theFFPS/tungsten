@@ -13,104 +13,135 @@
 
 #pragma once
 
-#include <memory>
+#include <array>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
 
 #include "game_profile.hpp"
+#include <tungsten/world/item/item_stack.hpp>
+#include <tungsten/resource/resource_location.hpp>
 
 namespace tungsten {
 
 struct text_t;
+struct dialog_t;
 
-struct text_component_score_t {
-    std::string name;
-    std::string objective;
-};
 struct text_component_click_event_t {
-    std::string action;
-    std::optional<std::string> url; // action == 'open_url'
-    std::optional<std::string> path; // action == 'open_file'
-    std::optional<std::string> command; // action == 'run_command' || action == 'suggest_command'
-    std::optional<int> page; // action == 'change_page'
-    std::optional<std::string> value; // action == 'copy_to_clipboard'
-    // todo: show_dialog
+    struct open_url_t {
+        std::string m_url;
+    };
+    struct open_file_t {
+        std::string m_path;
+    };
+    struct run_command_t {
+        std::string m_command;
+    };
+    struct suggest_command_t {
+        std::string m_command;
+    };
+    struct change_page_t {
+        int m_page;
+    };
+    struct copy_to_clipboard_t {
+        std::string m_value;
+    };
+    struct show_dialog_t {
+        std::variant<resource_location_t, std::vector<dialog_t>> m_dialog;
+    };
+    struct custom_t {
+        std::string m_id;
+        std::optional<nlohmann::json> m_payload;
+    };
 
-    // action == 'custom'
-    std::optional<std::string> id;
-    // std::optional<glz::generic_json> payload;
+    std::string m_action;
+    std::variant<open_url_t, open_file_t, run_command_t, suggest_command_t, change_page_t, copy_to_clipboard_t, show_dialog_t, custom_t> m_value;
 };
 struct text_component_hover_event_t {
-    std::string action;
-    std::optional<std::unique_ptr<std::variant<std::string, std::vector<text_t>, text_t>>> value; // action == 'show_text'
+    struct show_text_t {
+        std::variant<std::string, std::vector<text_t>> m_value;
+    };
+    using show_item_t = item_stack_t;
+    struct show_entity_t {
+        std::variant<std::string, std::vector<text_t>> m_name;
+        resource_location_t m_id;
+        std::variant<std::array<int, 4>> m_uuid;
+    };
 
-    // action == 'show_item'
-    std::optional<std::string> id; // also for action == 'show_entity'
-    std::optional<int> count;
-    // todo: components
-
-    // action == 'show_entity'
-    // id
-    std::optional<std::unique_ptr<std::variant<std::string, std::vector<text_t>, text_t>>> name;
-    std::optional<std::variant<std::string, std::array<int, 4>>> uuid;
+    std::string m_action;
+    std::variant<show_text_t, show_item_t, show_entity_t> m_value;
 };
 
 struct text_t {
-    // type == 'text'
-    std::optional<std::string> text;
+    struct plain_t { // text
+        std::string m_text;
+    };
+    struct translatable_t {
+        std::string m_translate;
+        std::optional<std::string> m_fallback;
+        std::vector<text_t> m_with;
+    };
+    struct score_t {
+        struct score_internal_t {
+            std::string m_name;
+            std::string m_objective;
+        } m_score;
+    };
+    struct selector_t {
+        std::string m_selector;
+        std::optional<std::variant<std::string, std::vector<text_t>>> m_separator;
+    };
+    struct keybind_t {
+        std::string m_keybind;
+    };
+    struct nbt_t {
+        std::optional<std::string> m_source;
+        std::string m_nbt;
+        bool m_interpret = false;
+        bool m_plain = false;
+        std::optional<std::variant<std::string, std::vector<text_t>>> m_separator;
+        std::optional<std::string> m_entity;
+        std::optional<std::string> m_block;
+        std::optional<std::string> m_storage;
+    };
+    struct object_t {
+        struct atlas_t {
+            std::optional<std::string> m_atlas;
+            std::string m_sprint;
+        };
+        struct player_t {
+            std::variant<std::string, game_profile_t> m_player;
+            bool m_hat = true;
+        };
 
-    // type == 'translatable'
-    std::optional<std::string> translate;
-    std::optional<std::string> fallback;
-    std::optional<std::vector<text_t>> with;
+        resource_location_t m_object = resource_location_t("atlas");
+        std::variant<atlas_t, player_t> m_value;
+    };
 
-    // type == 'score'
-    std::optional<text_component_score_t> score;
-
-    // type == 'selector'
-    std::optional<std::string> selector;
-    std::optional<std::unique_ptr<std::variant<std::string, std::vector<text_t>, text_t>>> separator; // also for type == 'nbt'
-
-    // type == 'keybind'
-    std::optional<std::string> keybind;
-
-    // type == 'nbt'
-    std::optional<std::string> source;
-    std::optional<std::string> nbt;
-    std::optional<bool> interpret;
-    std::optional<bool> plain;
-    // separator was defined earlier
-    std::optional<std::string> entity;
-    std::optional<std::string> block;
-    std::optional<std::string> storage;
-
-    // type == 'object'
-    /// object == 'atlas'
-    std::optional<std::string> atlas;
-    std::optional<std::string> sprite;
-    /// object == 'player'
-    std::optional<bool> hat;
-    std::optional<std::variant<std::string, game_profile_t>> player;
+    resource_location_t m_type = resource_location_t("text");
+    std::variant<plain_t, translatable_t, score_t, selector_t, keybind_t, nbt_t, object_t> m_value;
 
     // style
-    std::optional<std::string> color;
-    std::string font = "minecraft:default";
-    bool bold = false;
-    bool italic = false;
-    bool underlined = false;
-    bool strikethrough = false;
-    bool obfuscated = false;
-    std::optional<std::variant<int, std::array<float, 4>>> shadow_color;
+    std::optional<std::string> m_color;
+    resource_location_t m_font = resource_location_t("default");
+    bool m_bold = false;
+    bool m_italic = false;
+    bool m_underlined = false;
+    bool m_strikethrough = false;
+    bool m_obfuscated = false;
+    std::optional<std::variant<int, std::array<float, 4>>> m_shadow_color;
 
     // interactivity
     std::optional<std::string> insertion;
     std::optional<text_component_click_event_t> click_event;
     std::optional<text_component_hover_event_t> hover_event;
 
-    // extra
-    std::optional<std::vector<text_t>> extra;
+    std::vector<text_t> extra;
+
+    friend void to_json(nlohmann::json& j, const text_t& val) {}
+    friend void from_json(const nlohmann::json& j, text_t& val) {}
 };
 
 }
