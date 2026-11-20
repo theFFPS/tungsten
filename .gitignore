@@ -6,6 +6,3 @@ tungsten-github
 
 # contains proprietary game files:
 test
-
-# migration scratch (backup of the pre-modules tree)
-.mig

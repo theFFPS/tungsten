@@ -15,6 +15,10 @@ find . -type d -path "./meta*" -exec mkdir -p "${SHADOW_DIR}/{}" \;
 find . -type f -path "./meta*" -exec ln -f "{}" "${SHADOW_DIR}/{}" \;
 find . -type d -path "./tools*" -exec mkdir -p "${SHADOW_DIR}/{}" \;
 find . -type f -path "./tools*" -exec ln -f "{}" "${SHADOW_DIR}/{}" \;
+find . -type d -path "./tests*" -exec mkdir -p "${SHADOW_DIR}/{}" \;
+find . -type f -path "./tests*" -exec ln -f "{}" "${SHADOW_DIR}/{}" \;
+find . -type d -path "./mod*" -exec mkdir -p "${SHADOW_DIR}/{}" \;
+find . -type f -path "./mod*" -exec ln -f "{}" "${SHADOW_DIR}/{}" \;
 ln -f conanfile.py ${SHADOW_DIR}/conanfile.py
 ln -f CMakeLists.txt ${SHADOW_DIR}/CMakeLists.txt
 ln -f LICENSE ${SHADOW_DIR}/LICENSE
