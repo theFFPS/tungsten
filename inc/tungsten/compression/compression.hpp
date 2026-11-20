@@ -18,15 +18,16 @@
 
 namespace tungsten {
 
-enum class compression_type_t : uint8_t {
+enum class compression_type_t : std::uint8_t {
     none,
     zstd,
-    zlib
+    zlib,
+    gzip // decompress: also accepts a zlib stream (auto-detect); out_len is only a size hint (0 = unknown)
 };
 
 struct compression_t {
-    static std::vector<uint8_t> compress(compression_type_t type, const uint8_t* src, size_t len, int level);
-    static std::vector<uint8_t> decompress(compression_type_t type, const uint8_t* src, size_t src_len, size_t out_len);
+    static std::vector<std::uint8_t> compress(compression_type_t type, const std::uint8_t* src, std::size_t len, int level);
+    static std::vector<std::uint8_t> decompress(compression_type_t type, const std::uint8_t* src, std::size_t src_len, std::size_t out_len);
 };
 
 }

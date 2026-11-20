@@ -1,3 +1,16 @@
+/*
+
+     tungsten
+     Copyright (C) 2026  40fpsss
+
+     This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+     You should have received a copy of the GNU Affero General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ */
+
 #pragma once
 
 #include <tungsten/resource/resource_location.hpp>
@@ -11,25 +24,9 @@ struct trim_material_t {
 };
 
 struct trim_pattern_t {
-    resource_location_t m_asset_id;
-    bool m_decal = false;
-    text_t m_description;
-
-    friend void to_json(nlohmann::json& j, const trim_pattern_t& val) {
-        j = {
-            { "asset_id", val.m_asset_id },
-            { "decal", val.m_decal },
-            { "description", val.m_description }
-        };
-    }
-    friend void from_json(const nlohmann::json& j, trim_pattern_t& val) {
-        val.m_asset_id = j["asset_id"];
-        val.m_description = j["description"];
-        if (j.contains("decal")) val.m_decal = j["decal"];
-        else val.m_decal = false;
-    }
+    resource_location_t asset_id;
+    text_t description;
+    bool decal = false;
 };
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(trim_material_t, palette_id, description)
 
 }

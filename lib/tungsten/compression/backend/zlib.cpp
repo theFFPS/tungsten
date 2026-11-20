@@ -12,29 +12,78 @@
  */
 
 #include <tungsten/compression/backend/zlib.hpp>
+#include <algorithm>
 #include <stdexcept>
 #include <zlib-ng.h>
 
 namespace tungsten {
 namespace backend {
 
-std::vector<uint8_t> zlib_compression_t::compress(const uint8_t* src, size_t len, int level) {
-    size_t compressed_size = zng_compressBound(len);
-    std::vector<uint8_t> compressed_text (compressed_size);
+std::vector<std::uint8_t> zlib_compression_t::compress(const std::uint8_t* src, std::size_t len, int level) {
+    std::size_t compressed_size = zng_compressBound(len);
+    std::vector<std::uint8_t> compressed_text (compressed_size);
     if (zng_compress2(compressed_text.data(), &compressed_size, src, len, level) != Z_OK) {
         throw std::runtime_error("[compression backend] zlib_compression_t::compress error: zlib-ng failed to compress");
     }
     compressed_text.resize(compressed_size);
     return compressed_text;
 }
-std::vector<uint8_t> zlib_compression_t::decompress(const uint8_t* src, size_t src_len, size_t out_len) {
-    std::vector<uint8_t> plain_text (out_len);
-    size_t compressed_size = src_len;
+std::vector<std::uint8_t> zlib_compression_t::decompress(const std::uint8_t* src, std::size_t src_len, std::size_t out_len) {
+    std::vector<std::uint8_t> plain_text (out_len);
+    std::size_t compressed_size = src_len;
     if (zng_uncompress2(plain_text.data(), &out_len, src, &compressed_size) != Z_OK) {
         throw std::runtime_error("[compression backend] zlib_compression_t::decompress error: zlib-ng failed to uncompress");
     }
     plain_text.resize(out_len);
     return plain_text;
+}
+
+std::vector<std::uint8_t> zlib_compression_t::gzip_compress(const std::uint8_t* src, std::size_t len, int level) {
+    zng_stream stream {};
+    if (zng_deflateInit2(&stream, level, Z_DEFLATED, 31, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+        throw std::runtime_error("[compression backend] zlib_compression_t::gzip_compress error: zlib-ng failed to initialize");
+    }
+    std::vector<std::uint8_t> out (len / 2 + 64);
+    stream.next_in = src;
+    stream.avail_in = static_cast<std::uint32_t>(len);
+    int status = Z_OK;
+    while (status == Z_OK) {
+        if (stream.total_out == out.size()) out.resize(out.size() * 2);
+        stream.next_out = out.data() + stream.total_out;
+        stream.avail_out = static_cast<std::uint32_t>(out.size() - stream.total_out);
+        status = zng_deflate(&stream, Z_FINISH);
+    }
+    std::size_t total = stream.total_out;
+    zng_deflateEnd(&stream);
+    if (status != Z_STREAM_END) {
+        throw std::runtime_error("[compression backend] zlib_compression_t::gzip_compress error: zlib-ng failed to compress");
+    }
+    out.resize(total);
+    return out;
+}
+std::vector<std::uint8_t> zlib_compression_t::gzip_decompress(const std::uint8_t* src, std::size_t src_len, std::size_t size_hint) {
+    zng_stream stream {};
+    // 47 = 15 + 32: auto-detect gzip / zlib header
+    if (zng_inflateInit2(&stream, 47) != Z_OK) {
+        throw std::runtime_error("[compression backend] zlib_compression_t::gzip_decompress error: zlib-ng failed to initialize");
+    }
+    std::vector<std::uint8_t> out (size_hint != 0 ? size_hint : std::max<std::size_t>(src_len * 4, 256));
+    stream.next_in = src;
+    stream.avail_in = static_cast<std::uint32_t>(src_len);
+    int status = Z_OK;
+    while (status == Z_OK) {
+        if (stream.total_out == out.size()) out.resize(out.size() * 2);
+        stream.next_out = out.data() + stream.total_out;
+        stream.avail_out = static_cast<std::uint32_t>(out.size() - stream.total_out);
+        status = zng_inflate(&stream, Z_NO_FLUSH);
+    }
+    std::size_t total = stream.total_out;
+    zng_inflateEnd(&stream);
+    if (status != Z_STREAM_END) {
+        throw std::runtime_error("[compression backend] zlib_compression_t::gzip_decompress error: zlib-ng failed to uncompress (corrupt or truncated stream)");
+    }
+    out.resize(total);
+    return out;
 }
 
 }

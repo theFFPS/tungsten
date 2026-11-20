@@ -13,27 +13,42 @@
 
 #pragma once
 
+#include <optional>
 #include <tungsten/resource/resource_location.hpp>
+#include <tungsten/util/json_reflect.hpp>
 
 namespace tungsten {
 
+// "minecraft:entity.cat.ambient" or { "sound_id": "...", "range": 16.0 }
 struct sound_event_t {
-    resource_location_t m_sound_id;
-    std::optional<float> m_range;
+    resource_location_t sound_id;
+    std::optional<float> range;
 
-    friend void to_json(nlohmann::json& j, const sound_event_t& val) {
-        if (val.m_range.has_value()) j = {
-            { "sound_id", val.m_sound_id },
-            { "range", val.m_range.value() }
-        }; else j = val.m_sound_id;
-    }
-    friend void from_json(const nlohmann::json& j, sound_event_t& val) {
-        if (j.is_string()) val.m_sound_id = j;
-        else {
-            val.m_sound_id = j.at("sound_id");
-            if (j.contains("range")) val.m_range = j["range"];
+    void from_generic(const glz::generic& j) {
+        if (j.is_string()) {
+            sound_id.from(j.get_string());
+            range.reset();
+        } else if (j.is_object()) {
+            if (!j.contains("sound_id")) throw jr::error("", "missing required key 'sound_id'");
+            sound_id.from(j["sound_id"].get_string());
+            if (j.contains("range")) range = static_cast<float>(j["range"].get_number());
+            else range.reset();
+        } else {
+            throw jr::error("", "expected a sound event (string or object)");
         }
     }
+    glz::generic to_generic() const {
+        if (!range.has_value()) return glz::generic(sound_id.to_string());
+        glz::generic j = glz::generic::object_t{};
+        j["sound_id"] = sound_id.to_string();
+        j["range"] = static_cast<double>(*range);
+        return j;
+    }
+
+    struct glaze {
+        using R = sound_event_t;
+        static constexpr auto value = glz::custom<&R::from_generic, &R::to_generic>;
+    };
 };
 
 }

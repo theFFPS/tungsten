@@ -14,12 +14,14 @@
 #pragma once
 
 #include <memory>
-#include <tungsten/util/allocator.hpp>
 #include <cstdint>
 #include <string>
 #include <vector>
 #include <cstring>
 #include <concepts>
+
+#include <tungsten/crypto.hpp>
+import tungsten.crypto;
 
 namespace tungsten {
 

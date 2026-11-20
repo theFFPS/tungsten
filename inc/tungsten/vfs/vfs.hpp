@@ -16,7 +16,6 @@
 #include "vfs_struct.hpp"
 #include "vfs_fileinfo.hpp"
 #include <shared_mutex>
-#include <tungsten/util/file_io.hpp>
 
 namespace tungsten {
 

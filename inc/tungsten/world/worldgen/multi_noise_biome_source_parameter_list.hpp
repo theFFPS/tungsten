@@ -13,15 +13,13 @@
 
 #pragma once
 
-#include <nlohmann/json.hpp>
 #include <tungsten/resource/resource_location.hpp>
+#include <tungsten/util/json_reflect.hpp>
 
 namespace tungsten {
 
 struct multi_noise_biome_source_parameter_list_t {
     resource_location_t preset;
 };
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(multi_noise_biome_source_parameter_list_t, preset)
 
 }

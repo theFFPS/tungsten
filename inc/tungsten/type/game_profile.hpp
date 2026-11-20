@@ -17,6 +17,7 @@
 #include <array>
 #include <string>
 #include <vector>
+#include <tungsten/util/json_reflect.hpp>
 
 namespace tungsten {
 

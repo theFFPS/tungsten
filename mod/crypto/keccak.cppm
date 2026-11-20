@@ -1,0 +1,105 @@
+/*
+
+     tungsten
+     Copyright (C) 2026  40fpsss
+
+     This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+     You should have received a copy of the GNU Affero General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ */
+
+module;
+#include <tungsten/crypto.hpp>
+
+export module tungsten.crypto:keccak;
+
+import :types;
+import std;
+import :encoding;
+
+export namespace tungsten {
+
+struct keccak256_hash_t {
+private:
+    hash_ctx_t m_ctx;
+    std::vector<std::uint8_t> m_digest;
+    unsigned m_len;
+    bool m_finalized = false;
+
+    EVP_MD *m_md;
+public:
+    keccak256_hash_t() : m_ctx(EVP_MD_CTX_new()), m_md(EVP_MD_fetch(NULL, "KECCAK-256", NULL)) {
+        if (!m_ctx) throw std::runtime_error("keccak256_hash_t error: failed to create hash_ctx_t");
+        if (!m_md)  throw std::runtime_error("keccak256_hash_t error: failed to fetch KECCAK-256 algorithm");
+        reset();
+    }
+
+    keccak256_hash_t(const keccak256_hash_t&) = delete;
+    keccak256_hash_t& operator=(const keccak256_hash_t&) = delete;
+
+    keccak256_hash_t(keccak256_hash_t&& other) noexcept
+        : m_ctx(std::move(other.m_ctx)), m_digest(std::move(other.m_digest)), m_len(other.m_len), m_finalized(other.m_finalized), m_md(other.m_md) {
+        other.m_md = nullptr;
+    }
+    keccak256_hash_t& operator=(keccak256_hash_t&& other) noexcept {
+        if (this != &other) {
+            EVP_MD_free(m_md);
+
+            m_ctx = std::move(other.m_ctx);
+            m_digest = std::move(other.m_digest);
+            m_len = other.m_len;
+            m_finalized = other.m_finalized;
+            m_md = other.m_md;
+
+            other.m_md = nullptr;
+        }
+        return *this;
+    }
+
+    ~keccak256_hash_t() {
+        EVP_MD_free(m_md);
+    }
+
+    void update(std::span<const std::uint8_t> data) {
+        if (data.empty()) return;
+        if (EVP_DigestUpdate(m_ctx.get(), data.data(), data.size()) != 1) throw std::runtime_error("keccak256_hash_t error: failed to update KECCAK256 digest");
+        m_finalized = false;
+    }
+    void reset() {
+        if (EVP_DigestInit_ex(m_ctx.get(), m_md, nullptr) != 1) throw std::runtime_error("keccak256_hash_t error: failed to reset KECCAK256 digest");
+        m_digest.clear();
+        m_finalized = false;
+    }
+    void finalize() {
+        if (m_finalized) return;
+        m_digest.resize(static_cast<std::size_t>(EVP_MD_get_size(m_md)));
+        if (EVP_DigestFinal_ex(m_ctx.get(), m_digest.data(), &m_len) != 1) throw std::runtime_error("keccak256_hash_t error: failed to finalize KECCAK256 digest");
+        m_finalized = true;
+    }
+
+    std::vector<std::uint8_t> to_bytes() {
+        finalize();
+        return m_digest;
+    }
+    std::string to_string() {
+        finalize();
+        return to_hex_str(m_digest);
+    }
+};
+
+bool verify_keccak256(std::span<const std::uint8_t> data, std::span<const std::uint8_t> expected) {
+    keccak256_hash_t keccak;
+    keccak.update(data);
+    const auto& digest = keccak.to_bytes();
+    return std::equal(digest.begin(), digest.end(), expected.begin(), expected.end());
+}
+bool verify_keccak256(std::span<const std::uint8_t> data, std::string_view expected) {
+    keccak256_hash_t keccak;
+    keccak.update(data);
+    return expected == keccak.to_string();
+}
+
+}

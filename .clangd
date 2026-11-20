@@ -1,2 +1,20 @@
 CompileFlags:
   CompilationDatabase: "build/Release"
+  Add:
+    - -std=c++26
+    - -freflection
+    - -freflection-latest
+    - -fno-pch-instantiate-templates
+    - -fno-delayed-template-parsing
+    # - -fmodule-file=std=/absolute/path/to/your/project/build/Release/std.pcm
+  Remove:
+    - -fdeps-format=*
+    - -fdeps-file=*
+    - -fdeps-target=*
+    - -fmodule-mapper=*
+    - -fmodules-ts
+    - -fmodules
+
+Diagnostics:
+  Suppress:
+    - module_not_found

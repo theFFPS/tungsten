@@ -11,48 +11,80 @@
 
  */
 
-#include "tungsten/resource/builtin_registries.hpp"
-#include <memory>
-#include <tungsten/vfs/vfs.hpp>
-#include <tungsten/crypto/shared.hpp>
-#include <sys/resource.h>
+#include <tungsten/datapack/datapack_manager.hpp>
+#include <iostream>
+#ifdef _WIN32
+    #include <windows.h>
+    #include <crtdbg.h>
+    #pragma comment(linker, "/STACK:67108864")
+#else
+    #include <sys/resource.h>
+    #include <algorithm>
+#endif
 
-#include <tungsten/util/file_io.hpp>
+import tungsten.io;
+import tungsten.vfs;
+
+#include <tungsten/crypto.hpp>
+import tungsten.crypto;
 
 using namespace tungsten;
 
 void stop() {
-    g_file_io_ctx->stop();
-    g_file_io_ctx = nullptr;
+    stop_asio();
     CRYPTO_secure_malloc_done();
     OPENSSL_cleanup();
 }
 
-void disable_core_dumps() {
+void manage_resources() {
+#ifdef _WIN32
+    SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+
+    #ifdef _DEBUG
+    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_DEBUG);
+    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
+    #endif
+
+#else
     struct rlimit rl;
     rl.rlim_cur = 0;
     rl.rlim_max = 0;
     setrlimit(RLIMIT_CORE, &rl);
+
+    struct rlimit rls;
+    if (getrlimit(RLIMIT_STACK, &rls) == 0) {
+        const rlim_t target_stack = 64ULL * 1024 * 1024;
+        if (rls.rlim_cur < target_stack) {
+            rls.rlim_cur = (rls.rlim_max == RLIM_INFINITY)
+                            ? target_stack
+                            : std::min(target_stack, rls.rlim_max);
+            setrlimit(RLIMIT_STACK, &rls);
+        }
+    }
+#endif
 }
-int main() {
-    disable_core_dumps();
+int main(int argc, char** argv) {
+    manage_resources();
     if (CRYPTO_secure_malloc_init(1024*1024, 16) != 1) {
         throw std::runtime_error("tungsten::main error: failed to initialize OpenSSL secure heap.");
     }
 
-    g_file_io_ctx = std::make_shared<asio::io_context>();
-    auto work_guard = asio::make_work_guard(*g_file_io_ctx);
-    std::thread worker_thread ([]() {
-        if (g_file_io_ctx) g_file_io_ctx->run();
-    });
+    init_asio();
     // worker_thread.detach();
 
     g_vfs = std::make_shared<vfs_t>();
     g_vfs->initialize();
 
-    parse_builtin("test/data/minecraft");
+    // usage: tungsten [vanilla data directory] [extra packs directory]
+    {
+        datapack_manager_t manager;
+        manager.add_base_directory(std::filesystem::path(argc > 1 ? argv[1] : "test/data"));
+        if (argc > 2) manager.add_packs_from_directory(argv[2]);
+        manager.load();
+        std::cout << manager.summary();
+        for (const auto& issue : manager.report().issues()) std::cout << issue.to_string() << "\n";
+        std::cout << manager.report().error_count() << " errors, " << manager.report().warning_count() << " warnings\n";
+    }
 
-    work_guard.reset();
-    if (worker_thread.joinable()) worker_thread.join();
     stop();
 }

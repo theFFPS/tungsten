@@ -13,9 +13,11 @@
 
 #pragma once
 
+#include <compare>
 #include <string>
 #include <string_view>
-#include <nlohmann/json.hpp>
+#include <stdexcept>
+#include <glaze/glaze.hpp>
 
 namespace tungsten {
 
@@ -29,23 +31,37 @@ struct resource_location_t {
         from(combined);
     }
 
+    // parses 'namespace:path' (namespace defaults to 'minecraft'); throws std::runtime_error when the location is malformed
     void from(std::string_view combined);
     std::string to_string() const noexcept;
+
+    static bool is_valid_namespace(std::string_view value) noexcept;
+    static bool is_valid_path(std::string_view value) noexcept;
+    static bool is_valid(std::string_view combined) noexcept;
 
     bool operator==(const resource_location_t& other) const noexcept;
     bool operator!=(const resource_location_t& other) const noexcept;
     bool operator>(const resource_location_t& other) const noexcept;
     bool operator<(const resource_location_t& other) const noexcept;
 
-    friend void to_json(nlohmann::json& j, const resource_location_t& rl) {
-        j = rl.to_string();
-    }
-    friend void from_json(const nlohmann::json& j, resource_location_t& rl) {
-        rl.from(std::string(j));
-    }
+    // glaze: serialized as a single "namespace:path" string
+    void glaze_from(const std::string& s) { from(s); }
+    std::string glaze_to() const { return to_string(); }
+};
+struct resource_key_t {
+    resource_location_t m_registry;
+    resource_location_t m_object;
 };
 
 }
+
+// glz::meta for resource_location_t: a plain JSON string in both directions
+template <>
+struct glz::meta<tungsten::resource_location_t> {
+    using T = tungsten::resource_location_t;
+    using mimic = std::string; // behaves as a JSON string: usable as an object key and in variant deduction
+    static constexpr auto value = glz::custom<&T::glaze_from, &T::glaze_to>;
+};
 
 namespace std {
     template<> struct hash<tungsten::resource_location_t> {

@@ -13,53 +13,15 @@
 
 #include <cstring>
 #include <tungsten/config/credential_storage.hpp>
-#include <tungsten/crypto/aes.hpp>
 #include <stdexcept>
 #include <string_view>
 #include <algorithm>
 
+#include <tungsten/crypto.hpp>
+import tungsten.crypto;
+
 namespace tungsten {
 
-namespace {
-
-constexpr size_t l_max_name_size    = sizeof(credential_storage_entry_t::m_credential_name);
-constexpr size_t l_max_purpose_size = sizeof(credential_storage_entry_t::m_credential_purpose);
-constexpr size_t l_max_data_size    = sizeof(credential_storage_entry_t::m_credential_data);
-constexpr size_t l_max_pt   = l_max_data_size - 28;
-
-inline void secure_zero(void* p, size_t n) noexcept {
-    if (p && n) memset_explicit(p, 0, n);
-}
-template <typename T>
-inline void secure_zero(T& container) noexcept {
-    if (!container.empty())
-        memset_explicit(container.data(), 0, container.size() * sizeof(typename T::value_type));
-}
-
-std::vector<uint8_t> make_aad(credential_storage_entry_type_t type,
-                              credential_storage_entry_encryption_type_t enc,
-                              uint16_t name_size,
-                              uint16_t purpose_size,
-                              uint16_t credential_size,
-                              const uint8_t* name,
-                              const uint8_t* purpose) {
-    std::vector<uint8_t> aad;
-    aad.reserve(1 + 1 + 2 + 2 + 2 + name_size + purpose_size);
-    aad.push_back(static_cast<uint8_t>(type));
-    aad.push_back(static_cast<uint8_t>(enc));
-    auto push16 = [&aad](uint16_t v) {
-        aad.push_back(static_cast<uint8_t>( v        & 0xFF));
-        aad.push_back(static_cast<uint8_t>((v >> 8)  & 0xFF));
-    };
-    push16(name_size);
-    push16(purpose_size);
-    push16(credential_size);
-    aad.insert(aad.end(), name,    name    + name_size);
-    aad.insert(aad.end(), purpose, purpose + purpose_size);
-    return aad;
-}
-
-}
 
 credential_storage_entry_type_t credential_storage_entry_t::type() const noexcept {
     return m_type;

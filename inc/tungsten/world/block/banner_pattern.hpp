@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <string>
 #include <tungsten/resource/resource_location.hpp>
 
 namespace tungsten {
@@ -21,7 +22,5 @@ struct banner_pattern_t {
     resource_location_t asset_id;
     std::string translation_key;
 };
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(banner_pattern_t, asset_id, translation_key)
 
 }

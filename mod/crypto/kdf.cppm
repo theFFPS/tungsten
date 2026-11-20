@@ -1,0 +1,68 @@
+/*
+
+     tungsten
+     Copyright (C) 2026  40fpsss
+
+     This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+     You should have received a copy of the GNU Affero General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ */
+
+module;
+#include <tungsten/crypto.hpp>
+
+export module tungsten.crypto:kdf;
+
+import :types;
+import std;
+
+export namespace tungsten {
+
+std::vector<std::uint8_t, secure_allocator_t<std::uint8_t>> hkdf_sha3_512(std::span<const std::uint8_t> data, std::span<const std::uint8_t> salt, std::span<const std::uint8_t> info, std::size_t olen) {
+    if (data.empty()) throw std::runtime_error("tungsten::hkdf error: input data cannot be empty");
+    if (!olen) throw std::runtime_error("tungsten::hkdf error: output length must be positive");
+    std::vector<std::uint8_t, secure_allocator_t<std::uint8_t>> output (olen);
+    std::size_t outlen = olen;
+    if (olen > 255 * 64) throw std::runtime_error("tungsten::hkdf error: output length too large");
+    pkey_ctx_t ctx (EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+    if (!ctx) throw std::runtime_error("tungsten::hkdf error: failed to create derive context");
+    if (EVP_PKEY_derive_init(ctx.get()) <= 0) throw std::runtime_error("tungsten::hkdf error: failed to initialize derive context");
+    if (EVP_PKEY_CTX_set_hkdf_md(ctx.get(), EVP_sha3_512()) <= 0) throw std::runtime_error("tungsten::hkdf error: failed to set hash function");
+    if (EVP_PKEY_CTX_set1_hkdf_key(ctx.get(), data.data(), data.size()) <= 0)
+        throw std::runtime_error("tungsten::hkdf error: failed to set input data");
+    if (!salt.empty()) if (EVP_PKEY_CTX_set1_hkdf_salt(ctx.get(), salt.data(), salt.size()) <= 0)
+        throw std::runtime_error("tungsten::hkdf error: failed to set salt");
+    if (!info.empty()) if (EVP_PKEY_CTX_add1_hkdf_info(ctx.get(), info.data(), info.size()) <= 0)
+        throw std::runtime_error("tungsten::hkdf error: failed to set info");
+    if (EVP_PKEY_derive(ctx.get(), output.data(), &outlen) <= 0) throw std::runtime_error("hkdf failed to derive key");
+    if (outlen != olen) throw std::runtime_error("tungsten::hkdf error: output length mismatch");
+    return output;
+}
+std::vector<std::uint8_t, secure_allocator_t<std::uint8_t>> argon2id(std::span<const std::uint8_t> password, std::span<const std::uint8_t> salt, std::size_t olen, std::size_t memcost, std::uint32_t iter) {
+    if (password.empty()) throw std::runtime_error("tungsten::sodium_argon2 error: password cannot be empty");
+
+    if (salt.size() != crypto_pwhash_SALTBYTES) {
+        throw std::runtime_error(std::format("tungsten::sodium_argon2 error: salt must be exactly {} bytes", crypto_pwhash_SALTBYTES));
+    }
+    if (!olen) throw std::runtime_error("tungsten::sodium_argon2 error: output length must be positive");
+
+    std::vector<std::uint8_t, secure_allocator_t<std::uint8_t>> output(olen);
+
+    int result = crypto_pwhash(
+        output.data(), output.size(), reinterpret_cast<const char*>(password.data()),
+        password.size(), salt.data(),
+        iter, memcost,
+        crypto_pwhash_ALG_ARGON2ID13
+    );
+
+    if (result != 0) {
+        throw std::runtime_error("tungsten::sodium_argon2 error: derivation failed (likely out of memory)");
+    }
+
+    return output;
+}
+
+}

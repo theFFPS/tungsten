@@ -17,18 +17,20 @@
 
 namespace tungsten {
 
-std::vector<uint8_t> compression_t::compress(compression_type_t type, const uint8_t* src, size_t len, int level) {
+std::vector<std::uint8_t> compression_t::compress(compression_type_t type, const std::uint8_t* src, std::size_t len, int level) {
     switch (type) {
     case tungsten::compression_type_t::zlib: return backend::zlib_compression_t::compress(src, len, level);
     case tungsten::compression_type_t::zstd: return backend::zstd_compression_t::compress(src, len, level);
-    default: return std::vector<uint8_t>(src, src + len);
+    case tungsten::compression_type_t::gzip: return backend::zlib_compression_t::gzip_compress(src, len, level);
+    default: return std::vector<std::uint8_t>(src, src + len);
     }
 }
-std::vector<uint8_t> compression_t::decompress(compression_type_t type, const uint8_t* src, size_t src_len, size_t out_len) {
+std::vector<std::uint8_t> compression_t::decompress(compression_type_t type, const std::uint8_t* src, std::size_t src_len, std::size_t out_len) {
     switch (type) {
     case tungsten::compression_type_t::zlib: return backend::zlib_compression_t::decompress(src, src_len, out_len);
     case tungsten::compression_type_t::zstd: return backend::zstd_compression_t::decompress(src, src_len, out_len);
-    default: return std::vector<uint8_t>(src, src + src_len);
+    case tungsten::compression_type_t::gzip: return backend::zlib_compression_t::gzip_decompress(src, src_len, out_len);
+    default: return std::vector<std::uint8_t>(src, src + src_len);
     }
 }
 

@@ -39,7 +39,7 @@ class tungsten(ConanFile):
         self.requires("onetbb/2023.1.0")
         self.requires("mimalloc/3.5.1")
         self.requires("tracy/0.14.1")
-        self.requires("nlohmann_json/3.12.0")
+        self.requires("glaze/9.1.0")
 
         # I/O
         self.requires("asio/1.38.0")

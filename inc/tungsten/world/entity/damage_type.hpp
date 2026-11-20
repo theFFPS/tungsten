@@ -1,35 +1,28 @@
+/*
+
+     tungsten
+     Copyright (C) 2026  40fpsss
+
+     This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+     You should have received a copy of the GNU Affero General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ */
+
 #pragma once
 
 #include <string>
-#include <nlohmann/json.hpp>
 
 namespace tungsten {
 
 struct damage_type_t {
-    std::string m_message_id;
-    std::string m_scaling; // never || always || when_caused_by_living_non_player
-    std::string m_effects = "hurt"; // hurt || thorns || drowning || burning || poking || freezing
-    std::string m_death_message_type = "default"; // default || fall_variants || intentional_game_design
-    float m_exhaustion;
-
-    friend void to_json(nlohmann::json& j, const damage_type_t& val) {
-        j = {
-            { "message_id", val.m_message_id },
-            { "exhaustion", val.m_exhaustion },
-            { "scaling", val.m_scaling },
-            { "effects", val.m_effects },
-            { "death_message_type", val.m_death_message_type }
-        };
-    }
-    friend void from_json(const nlohmann::json& j, damage_type_t& val) {
-        val.m_message_id = j["message_id"];
-        val.m_scaling = j["scaling"];
-        val.m_exhaustion = j["exhaustion"];
-        if (j.contains("effects")) val.m_effects = std::string(j["effects"]);
-        else val.m_effects = "hurt";
-        if (j.contains("death_message_type")) val.m_death_message_type = std::string(j["death_message_type"]);
-        else val.m_death_message_type = "hurt";
-    }
+    std::string message_id;
+    std::string scaling; // never || always || when_caused_by_living_non_player
+    float exhaustion;
+    std::string effects = "hurt"; // hurt || thorns || drowning || burning || poking || freezing
+    std::string death_message_type = "default"; // default || fall_variants || intentional_game_design
 };
 
 }

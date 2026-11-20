@@ -24,7 +24,6 @@ mldsa87_ctx_t& mldsa87_ctx_t::operator=(mldsa87_ctx_t&& other) noexcept {
     }
     return *this;
 }
-
 std::vector<uint8_t> mldsa87_ctx_t::generate() {
     pkey_ctx_t ctx (EVP_PKEY_CTX_new_from_name(nullptr, algo_name().c_str(), nullptr));
     if (!ctx) throw std::runtime_error("mldsa87_ctx_t failed to create pkey_ctx_t");
@@ -38,7 +37,6 @@ std::vector<uint8_t> mldsa87_ctx_t::generate() {
     m_can_sign = m_can_verify = true;
     return pubkey;
 }
-
 std::vector<uint8_t> mldsa87_ctx_t::pubkey() const {
     if (!m_key) throw std::runtime_error("mldsa87_ctx_t error: key structure is empty");
     bio_t bio(BIO_new(BIO_s_mem()));
@@ -52,7 +50,6 @@ std::vector<uint8_t> mldsa87_ctx_t::pubkey() const {
     const auto* udata = reinterpret_cast<const uint8_t*>(data);
     return std::vector<uint8_t>(udata, udata + len);
 }
-
 std::string mldsa87_ctx_t::pubpem() const {
     if (!m_key) throw std::runtime_error("mldsa87_ctx_t error: key structure is empty");
     bio_t bio(BIO_new(BIO_s_mem()));
@@ -65,7 +62,6 @@ std::string mldsa87_ctx_t::pubpem() const {
 
     return std::string(data, static_cast<size_t>(len));
 }
-
 bool mldsa87_ctx_t::set_pubkey(std::span<const uint8_t> pubkey) {
     bio_t bio(BIO_new_mem_buf(pubkey.data(), static_cast<int>(pubkey.size())));
     if (!bio) throw std::runtime_error("mldsa87_ctx_t error: failed to create bio_t");
@@ -80,7 +76,6 @@ bool mldsa87_ctx_t::set_pubkey(std::span<const uint8_t> pubkey) {
     m_can_verify = (m_key != nullptr);
     return m_can_verify;
 }
-
 bool mldsa87_ctx_t::set_pubpem(std::string_view pubkey) {
     bio_t bio(BIO_new_mem_buf(pubkey.data(), static_cast<int>(pubkey.size())));
     if (!bio) throw std::runtime_error("mldsa87_ctx_t error: failed to create bio_t");
@@ -89,7 +84,6 @@ bool mldsa87_ctx_t::set_pubpem(std::string_view pubkey) {
     m_can_verify = (m_key != nullptr);
     return m_can_verify;
 }
-
 std::vector<uint8_t, secure_allocator_t<uint8_t>> mldsa87_ctx_t::privkey() const {
     if (!m_key) throw std::runtime_error("mldsa87_ctx_t error: key structure is empty");
     bio_t bio(BIO_new(BIO_s_secmem()));
@@ -103,7 +97,6 @@ std::vector<uint8_t, secure_allocator_t<uint8_t>> mldsa87_ctx_t::privkey() const
     const auto* udata = reinterpret_cast<const uint8_t*>(data);
     return std::vector<uint8_t, secure_allocator_t<uint8_t>>(udata, udata + len);
 }
-
 bool mldsa87_ctx_t::set_privkey(std::span<const uint8_t> privkey) {
     bio_t bio(BIO_new_mem_buf(privkey.data(), static_cast<int>(privkey.size())));
     if (!bio) throw std::runtime_error("mldsa87_ctx_t error: failed to create bio_t");
@@ -118,7 +111,6 @@ bool mldsa87_ctx_t::set_privkey(std::span<const uint8_t> privkey) {
     m_can_sign = (m_key != nullptr);
     return m_can_sign;
 }
-
 std::vector<uint8_t> mldsa87_ctx_t::sign(std::span<const uint8_t> data) {
     std::vector<uint8_t> signature (sigsize());
     if (!m_can_sign) throw std::runtime_error("mldsa87_ctx_t cannot sign without private key");
@@ -132,7 +124,6 @@ std::vector<uint8_t> mldsa87_ctx_t::sign(std::span<const uint8_t> data) {
     signature.resize(sig_len);
     return signature;
 }
-
 bool mldsa87_ctx_t::verify(std::span<const uint8_t> data, std::span<const uint8_t> signature) {
     if (!m_can_verify) throw std::runtime_error("mldsa87_ctx_t cannot verify without public key");
     hash_ctx_t ctx(EVP_MD_CTX_new());
@@ -142,7 +133,6 @@ bool mldsa87_ctx_t::verify(std::span<const uint8_t> data, std::span<const uint8_
     if (result < 0) return false;
     return (result == 1);
 }
-
 bool mldsa87_ctx_t::can_sign() const { return m_can_sign; }
 bool mldsa87_ctx_t::can_verify() const { return m_can_verify; }
 std::string mldsa87_ctx_t::algo_name() const { return "ML-DSA-87"; }
