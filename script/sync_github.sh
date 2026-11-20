@@ -3,6 +3,8 @@
 # You do not need it, i use it for mirroring gitea with sha256 to github
 
 SHADOW_DIR="tungsten-github"
+find . -type d -path "./lib*" -exec mkdir -p "${SHADOW_DIR}/{}" \;
+find . -type f -path "./lib*" -exec ln -f "{}" "${SHADOW_DIR}/{}" \;
 find . -type d -path "./src*" -exec mkdir -p "${SHADOW_DIR}/{}" \;
 find . -type f -path "./src*" -exec ln -f "{}" "${SHADOW_DIR}/{}" \;
 find . -type d -path "./mod*" -exec mkdir -p "${SHADOW_DIR}/{}" \;

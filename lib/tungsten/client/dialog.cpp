@@ -17,119 +17,130 @@ namespace tungsten {
 
 namespace {
 
+using json = glz::generic;
+
 [[noreturn]] void fail(const std::string& message) {
     throw jr::error("", message);
 }
-resource_location_t read_type(const nlohmann::json& j, const char* what) {
-    if (!j.is_object()) fail(std::string("expected an object, got ") + j.type_name());
-    auto it = j.find("type");
-    if (it == j.end()) fail(std::string("missing required key 'type' of ") + what);
-    return it->get<resource_location_t>();
+resource_location_t read_type(const json& j, const char* what) {
+    if (!j.is_object()) fail("expected an object");
+    if (!j.contains("type")) fail(std::string("missing required key 'type' of ") + what);
+    return jr::from_generic<resource_location_t>(j["type"]);
 }
 [[noreturn]] void unknown_type(const resource_location_t& type, const char* what) {
     fail(std::string("unknown ") + what + " type '" + type.to_string() + "'");
 }
-template<class T> T get_at(const nlohmann::json& j, const char* key) {
+template<class T> T get_at(const json& j, const char* key) {
     try {
-        return j.get<T>();
+        return jr::from_generic<T>(j);
     } catch (const jr::error& e) {
         throw jr::error(key + (e.m_path.empty() ? "" : "." + e.m_path), e.m_message);
     }
 }
-
+// the fields of the type specific struct, as an object
+json object_of(const auto& value) {
+    return jr::to_generic(value);
 }
 
-void to_json(nlohmann::json& j, const dialog_body_t& val) {
-    std::visit([&j](const auto& value) { j = value; }, val.m_value);
-    j["type"] = val.m_type;
-}
-void from_json(const nlohmann::json& j, dialog_body_t& val) {
-    val.m_type = read_type(j, "dialog body");
-    if (val.m_type == resource_location_t("plain_message")) val.m_value = j.get<dialog_body_t::plain_message_t>();
-    else if (val.m_type == resource_location_t("item")) val.m_value = j.get<dialog_body_t::item_t>();
-    else unknown_type(val.m_type, "dialog body");
 }
 
-void to_json(nlohmann::json& j, const dialog_input_control_t::single_option_t::option_t& val) {
-    j = { { "id", val.m_id } };
-    if (val.m_display.has_value()) j["display"] = *val.m_display;
-    if (val.m_initial) j["initial"] = true;
+void dialog_body_t::from_generic(const json& j) {
+    type = read_type(j, "dialog body");
+    if (type == resource_location_t("plain_message")) value = jr::from_generic<plain_message_t>(j);
+    else if (type == resource_location_t("item")) value = jr::from_generic<item_t>(j);
+    else unknown_type(type, "dialog body");
 }
-void from_json(const nlohmann::json& j, dialog_input_control_t::single_option_t::option_t& val) {
-    val = dialog_input_control_t::single_option_t::option_t();
+json dialog_body_t::to_generic() const {
+    json j = std::visit([](const auto& v) { return object_of(v); }, value);
+    j["type"] = type.to_string();
+    return j;
+}
+
+void dialog_input_control_t::single_option_t::option_t::from_generic(const json& j) {
+    *this = option_t();
     if (j.is_string()) { // shorthand: just the id
-        val.m_id = j.get<std::string>();
+        id = j.get_string();
         return;
     }
     if (!j.is_object() || !j.contains("id")) fail("a single_option entry requires an 'id'");
-    val.m_id = j["id"].get<std::string>();
-    if (j.contains("display")) val.m_display = get_at<text_t>(j["display"], "display");
-    if (j.contains("initial")) val.m_initial = j["initial"].get<bool>();
+    id = jr::from_generic<std::string>(j["id"]);
+    if (j.contains("display")) display = get_at<text_t>(j["display"], "display");
+    if (j.contains("initial")) initial = jr::from_generic<bool>(j["initial"]);
+}
+json dialog_input_control_t::single_option_t::option_t::to_generic() const {
+    json j = json::object_t{};
+    j["id"] = id;
+    if (display.has_value()) j["display"] = jr::to_generic(*display);
+    if (initial) j["initial"] = true;
+    return j;
 }
 
-void to_json(nlohmann::json& j, const dialog_input_control_t& val) {
-    std::visit([&j](const auto& value) { j = value; }, val.m_value);
-    j["type"] = val.m_type;
-    j["key"] = val.m_key;
-    j["label"] = val.m_label;
-}
-void from_json(const nlohmann::json& j, dialog_input_control_t& val) {
-    val.m_type = read_type(j, "dialog input control");
+void dialog_input_control_t::from_generic(const json& j) {
+    type = read_type(j, "dialog input control");
     if (!j.contains("key")) fail("missing required key 'key'");
     if (!j.contains("label")) fail("missing required key 'label'");
-    val.m_key = j["key"].get<std::string>();
-    val.m_label = get_at<text_t>(j["label"], "label");
-    if (val.m_type == resource_location_t("text")) val.m_value = j.get<dialog_input_control_t::text_input_t>();
-    else if (val.m_type == resource_location_t("boolean")) val.m_value = j.get<dialog_input_control_t::boolean_t>();
-    else if (val.m_type == resource_location_t("single_option")) val.m_value = j.get<dialog_input_control_t::single_option_t>();
-    else if (val.m_type == resource_location_t("number_range")) val.m_value = j.get<dialog_input_control_t::number_range_t>();
-    else unknown_type(val.m_type, "dialog input control");
+    key = jr::from_generic<std::string>(j["key"]);
+    label = get_at<text_t>(j["label"], "label");
+    if (type == resource_location_t("text")) value = jr::from_generic<text_input_t>(j);
+    else if (type == resource_location_t("boolean")) value = jr::from_generic<boolean_t>(j);
+    else if (type == resource_location_t("single_option")) value = jr::from_generic<single_option_t>(j);
+    else if (type == resource_location_t("number_range")) value = jr::from_generic<number_range_t>(j);
+    else unknown_type(type, "dialog input control");
+}
+json dialog_input_control_t::to_generic() const {
+    json j = std::visit([](const auto& v) { return object_of(v); }, value);
+    j["type"] = type.to_string();
+    j["key"] = key;
+    j["label"] = jr::to_generic(label);
+    return j;
 }
 
-void to_json(nlohmann::json& j, const dialog_ref_t& val) {
-    if (val.m_reference.has_value()) j = *val.m_reference;
-    else if (val.m_inline) j = *val.m_inline;
-    else j = nullptr;
+void dialog_ref_t::from_generic(const json& j) {
+    *this = dialog_ref_t();
+    if (j.is_string()) reference = resource_or_tag_t::parse(j.get_string());
+    else inline_ = std::make_shared<dialog_t>(jr::from_generic<dialog_t>(j));
 }
-void from_json(const nlohmann::json& j, dialog_ref_t& val) {
-    val = dialog_ref_t();
-    if (j.is_string()) val.m_reference = j.get<resource_or_tag_t>();
-    else val.m_inline = std::make_shared<dialog_t>(j.get<dialog_t>());
+json dialog_ref_t::to_generic() const {
+    if (reference.has_value()) return json(reference->to_string());
+    if (inline_) return jr::to_generic(*inline_);
+    return json(nullptr);
 }
 
-void to_json(nlohmann::json& j, const dialog_t& val) {
-    std::visit([&j](const auto& value) { j = value; }, val.m_value);
-    j["type"] = val.m_type;
-    j["title"] = val.m_title;
-    if (val.m_external_title.has_value()) j["external_title"] = *val.m_external_title;
-    if (!val.m_body.empty()) j["body"] = val.m_body;
-    if (!val.m_inputs.empty()) j["inputs"] = val.m_inputs;
-    j["can_close_with_escape"] = val.m_can_close_with_escape;
-    j["pause"] = val.m_pause;
-    j["after_action"] = val.m_after_action;
-}
-void from_json(const nlohmann::json& j, dialog_t& val) {
-    val = dialog_t();
-    val.m_type = read_type(j, "dialog");
+void dialog_t::from_generic(const json& j) {
+    *this = dialog_t();
+    type = read_type(j, "dialog");
     if (!j.contains("title")) fail("missing required key 'title'");
-    val.m_title = get_at<text_t>(j["title"], "title");
-    if (j.contains("external_title")) val.m_external_title = get_at<text_t>(j["external_title"], "external_title");
+    title = get_at<text_t>(j["title"], "title");
+    if (j.contains("external_title")) external_title = get_at<text_t>(j["external_title"], "external_title");
     if (j.contains("body")) {
         // a single body element may be given without a list
-        if (j["body"].is_array()) val.m_body = get_at<std::vector<dialog_body_t>>(j["body"], "body");
-        else val.m_body.push_back(get_at<dialog_body_t>(j["body"], "body"));
+        if (j["body"].is_array()) body = get_at<std::vector<dialog_body_t>>(j["body"], "body");
+        else body.push_back(get_at<dialog_body_t>(j["body"], "body"));
     }
-    if (j.contains("inputs")) val.m_inputs = get_at<std::vector<dialog_input_control_t>>(j["inputs"], "inputs");
-    if (j.contains("can_close_with_escape")) val.m_can_close_with_escape = j["can_close_with_escape"].get<bool>();
-    if (j.contains("pause")) val.m_pause = j["pause"].get<bool>();
-    if (j.contains("after_action")) val.m_after_action = j["after_action"].get<std::string>();
+    if (j.contains("inputs")) inputs = get_at<std::vector<dialog_input_control_t>>(j["inputs"], "inputs");
+    if (j.contains("can_close_with_escape")) can_close_with_escape = jr::from_generic<bool>(j["can_close_with_escape"]);
+    if (j.contains("pause")) pause = jr::from_generic<bool>(j["pause"]);
+    if (j.contains("after_action")) after_action = jr::from_generic<std::string>(j["after_action"]);
 
-    if (val.m_type == resource_location_t("notice")) val.m_value = j.get<dialog_t::notice_t>();
-    else if (val.m_type == resource_location_t("confirmation")) val.m_value = j.get<dialog_t::confirmation_t>();
-    else if (val.m_type == resource_location_t("multi_action")) val.m_value = j.get<dialog_t::multi_action_t>();
-    else if (val.m_type == resource_location_t("server_links")) val.m_value = j.get<dialog_t::server_links_t>();
-    else if (val.m_type == resource_location_t("dialog_list")) val.m_value = j.get<dialog_t::dialog_list_t>();
-    else unknown_type(val.m_type, "dialog");
+    // the common keys were read above, the type specific struct only knows its own keys
+    if (type == resource_location_t("notice")) value = jr::from_generic<notice_t>(j);
+    else if (type == resource_location_t("confirmation")) value = jr::from_generic<confirmation_t>(j);
+    else if (type == resource_location_t("multi_action")) value = jr::from_generic<multi_action_t>(j);
+    else if (type == resource_location_t("server_links")) value = jr::from_generic<server_links_t>(j);
+    else if (type == resource_location_t("dialog_list")) value = jr::from_generic<dialog_list_t>(j);
+    else unknown_type(type, "dialog");
+}
+json dialog_t::to_generic() const {
+    json j = std::visit([](const auto& v) { return object_of(v); }, value);
+    j["type"] = type.to_string();
+    j["title"] = jr::to_generic(title);
+    if (external_title.has_value()) j["external_title"] = jr::to_generic(*external_title);
+    if (!body.empty()) j["body"] = jr::to_generic(body);
+    if (!inputs.empty()) j["inputs"] = jr::to_generic(inputs);
+    j["can_close_with_escape"] = can_close_with_escape;
+    j["pause"] = pause;
+    j["after_action"] = after_action;
+    return j;
 }
 
 }

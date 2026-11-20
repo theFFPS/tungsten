@@ -17,23 +17,23 @@ namespace tungsten {
 
 namespace {
 
+using json = glz::generic;
+
 [[noreturn]] void fail(const std::string& message) {
     throw jr::error("", message);
 }
-template<class T> T required(const nlohmann::json& j, const char* key) {
-    auto it = j.find(key);
-    if (it == j.end()) fail(std::string("missing required key '") + key + "'");
+template<class T> T req(const json& j, const char* key) {
+    if (!j.is_object() || !j.contains(key)) fail(std::string("missing required key '") + key + "'");
     try {
-        return it->get<T>();
+        return jr::from_generic<T>(j[key]);
     } catch (const jr::error& e) {
         throw jr::error(std::string(key) + (e.m_path.empty() ? "" : "." + e.m_path), e.m_message);
     }
 }
-template<class T> void optional_into(const nlohmann::json& j, const char* key, T& out) {
-    auto it = j.find(key);
-    if (it == j.end() || it->is_null()) return;
+template<class T> void opt_into(const json& j, const char* key, T& out) {
+    if (!j.contains(key) || j[key].is_null()) return;
     try {
-        out = it->get<T>();
+        out = jr::from_generic<T>(j[key]);
     } catch (const jr::error& e) {
         throw jr::error(std::string(key) + (e.m_path.empty() ? "" : "." + e.m_path), e.m_message);
     }
@@ -41,74 +41,77 @@ template<class T> void optional_into(const nlohmann::json& j, const char* key, T
 
 }
 
-void to_json(nlohmann::json& j, const test_environment_t::definition_t& val) {
-    if (val.m_reference.has_value()) j = *val.m_reference;
-    else if (val.m_inline) j = *val.m_inline;
-    else j = nullptr;
+void test_environment_t::definition_t::from_generic(const json& j) {
+    *this = definition_t();
+    if (j.is_string()) reference = resource_location_t(j.get_string());
+    else inline_ = std::make_shared<test_environment_t>(jr::from_generic<test_environment_t>(j));
 }
-void from_json(const nlohmann::json& j, test_environment_t::definition_t& val) {
-    val = test_environment_t::definition_t();
-    if (j.is_string()) val.m_reference = j.get<resource_location_t>();
-    else val.m_inline = std::make_shared<test_environment_t>(j.get<test_environment_t>());
-}
-
-void to_json(nlohmann::json& j, const test_environment_t& val) {
-    std::visit([&j](const auto& value) {
-        using value_t = std::decay_t<decltype(value)>;
-        if constexpr (std::is_same_v<value_t, test_environment_t::all_of_t>) j = { { "definitions", value.m_definitions } };
-        else j = value;
-    }, val.m_value);
-    j["type"] = val.m_type;
-}
-void from_json(const nlohmann::json& j, test_environment_t& val) {
-    if (!j.is_object()) fail(std::string("expected an object, got ") + j.type_name());
-    val.m_type = required<resource_location_t>(j, "type");
-    const std::string& type = val.m_type.m_path;
-    if (val.m_type.m_namespace != "minecraft") fail("unknown test environment type '" + val.m_type.to_string() + "'");
-    if (type == "all_of") {
-        val.m_value = test_environment_t::all_of_t { required<std::vector<test_environment_t::definition_t>>(j, "definitions") };
-    } else if (type == "function") val.m_value = j.get<test_environment_t::function_t>();
-    else if (type == "game_rules") val.m_value = j.get<test_environment_t::game_rules_t>();
-    else if (type == "weather") val.m_value = j.get<test_environment_t::weather_t>();
-    else if (type == "clock_time") val.m_value = j.get<test_environment_t::clock_time_t>();
-    else fail("unknown test environment type '" + val.m_type.to_string() + "'");
+json test_environment_t::definition_t::to_generic() const {
+    if (reference.has_value()) return json(reference->to_string());
+    if (inline_) return jr::to_generic(*inline_);
+    return json(nullptr);
 }
 
-void to_json(nlohmann::json& j, const test_instance_t& val) {
-    j = {
-        { "structure", val.m_structure },
-        { "max_ticks", val.m_max_ticks },
-        { "setup_ticks", val.m_setup_ticks },
-        { "required", val.m_required },
-        { "rotation", val.m_rotation },
-        { "manual_only", val.m_manual_only },
-        { "sky_access", val.m_sky_access },
-        { "max_attempts", val.m_max_attempts },
-        { "required_successes", val.m_required_successes },
-        { "type", val.m_type }
-    };
-    std::visit([&j](const auto& value) { j["environment"] = value; }, val.m_environment);
-    if (val.m_function.has_value()) j["function"] = *val.m_function;
+void test_environment_t::from_generic(const json& j) {
+    if (!j.is_object()) fail("expected an object");
+    type = req<resource_location_t>(j, "type");
+    const std::string& name = type.m_path;
+    if (type.m_namespace != "minecraft") fail("unknown test environment type '" + type.to_string() + "'");
+    if (name == "all_of") {
+        value = all_of_t { req<std::vector<definition_t>>(j, "definitions") };
+    } else if (name == "function") value = jr::from_generic<function_t>(j);
+    else if (name == "game_rules") value = jr::from_generic<game_rules_t>(j);
+    else if (name == "weather") value = jr::from_generic<weather_t>(j);
+    else if (name == "clock_time") value = jr::from_generic<clock_time_t>(j);
+    else fail("unknown test environment type '" + type.to_string() + "'");
 }
-void from_json(const nlohmann::json& j, test_instance_t& val) {
-    if (!j.is_object()) fail(std::string("expected an object, got ") + j.type_name());
-    val = test_instance_t();
-    val.m_type = required<resource_location_t>(j, "type");
-    val.m_structure = required<resource_location_t>(j, "structure");
-    val.m_max_ticks = required<int>(j, "max_ticks");
-    auto environment = j.find("environment");
-    if (environment == j.end()) fail("missing required key 'environment'");
-    if (environment->is_string()) val.m_environment = environment->get<resource_location_t>();
-    else val.m_environment = environment->get<test_environment_t>();
-    optional_into(j, "setup_ticks", val.m_setup_ticks);
-    optional_into(j, "required", val.m_required);
-    optional_into(j, "rotation", val.m_rotation);
-    optional_into(j, "manual_only", val.m_manual_only);
-    optional_into(j, "sky_access", val.m_sky_access);
-    optional_into(j, "max_attempts", val.m_max_attempts);
-    optional_into(j, "required_successes", val.m_required_successes);
-    if (val.m_type.m_path == "function") val.m_function = required<resource_location_t>(j, "function");
-    else optional_into(j, "function", val.m_function);
+json test_environment_t::to_generic() const {
+    json j = std::visit([](const auto& v) -> json {
+        using value_t = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<value_t, all_of_t>) {
+            json o = json::object_t{};
+            o["definitions"] = jr::to_generic(v.definitions);
+            return o;
+        } else return jr::to_generic(v);
+    }, value);
+    j["type"] = type.to_string();
+    return j;
+}
+
+void test_instance_t::from_generic(const json& j) {
+    if (!j.is_object()) fail("expected an object");
+    *this = test_instance_t();
+    type = req<resource_location_t>(j, "type");
+    structure = req<resource_location_t>(j, "structure");
+    max_ticks = req<int>(j, "max_ticks");
+    if (!j.contains("environment")) fail("missing required key 'environment'");
+    if (j["environment"].is_string()) environment = resource_location_t(j["environment"].get_string());
+    else environment = req<test_environment_t>(j, "environment");
+    opt_into(j, "setup_ticks", setup_ticks);
+    opt_into(j, "required", required);
+    opt_into(j, "rotation", rotation);
+    opt_into(j, "manual_only", manual_only);
+    opt_into(j, "sky_access", sky_access);
+    opt_into(j, "max_attempts", max_attempts);
+    opt_into(j, "required_successes", required_successes);
+    if (type.m_path == "function") function = req<resource_location_t>(j, "function");
+    else opt_into(j, "function", function);
+}
+json test_instance_t::to_generic() const {
+    json j = json::object_t{};
+    j["structure"] = structure.to_string();
+    j["max_ticks"] = static_cast<double>(max_ticks);
+    j["setup_ticks"] = static_cast<double>(setup_ticks);
+    j["required"] = required;
+    j["rotation"] = rotation;
+    j["manual_only"] = manual_only;
+    j["sky_access"] = sky_access;
+    j["max_attempts"] = static_cast<double>(max_attempts);
+    j["required_successes"] = static_cast<double>(required_successes);
+    j["type"] = type.to_string();
+    std::visit([&j](const auto& v) { j["environment"] = jr::to_generic(v); }, environment);
+    if (function.has_value()) j["function"] = function->to_string();
+    return j;
 }
 
 }

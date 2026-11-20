@@ -12,8 +12,6 @@
  */
 
 #include <tungsten/resource/resource_location.hpp>
-#include <stdexcept>
-#include <tuple>
 
 namespace tungsten {
 
@@ -26,20 +24,6 @@ bool is_path_char(char c) noexcept {
     return is_namespace_char(c) || c == '/';
 }
 
-}
-
-bool resource_location_t::is_valid_namespace(std::string_view value) noexcept {
-    for (char c : value) if (!is_namespace_char(c)) return false;
-    return true;
-}
-bool resource_location_t::is_valid_path(std::string_view value) noexcept {
-    for (char c : value) if (!is_path_char(c)) return false;
-    return true;
-}
-bool resource_location_t::is_valid(std::string_view combined) noexcept {
-    auto colon = combined.find(':');
-    if (colon == std::string_view::npos) return is_valid_path(combined);
-    return is_valid_namespace(combined.substr(0, colon)) && is_valid_path(combined.substr(colon + 1));
 }
 
 void resource_location_t::from(std::string_view combined) {
@@ -59,6 +43,21 @@ void resource_location_t::from(std::string_view combined) {
 std::string resource_location_t::to_string() const noexcept {
     return m_namespace + ":" + m_path;
 }
+
+bool resource_location_t::is_valid_namespace(std::string_view value) noexcept {
+    for (char c : value) if (!is_namespace_char(c)) return false;
+    return true;
+}
+bool resource_location_t::is_valid_path(std::string_view value) noexcept {
+    for (char c : value) if (!is_path_char(c)) return false;
+    return true;
+}
+bool resource_location_t::is_valid(std::string_view combined) noexcept {
+    auto colon = combined.find(':');
+    if (colon == std::string_view::npos) return is_valid_path(combined);
+    return is_valid_namespace(combined.substr(0, colon)) && is_valid_path(combined.substr(colon + 1));
+}
+
 bool resource_location_t::operator==(const resource_location_t& other) const noexcept {
     return other.m_namespace == m_namespace && other.m_path == m_path;
 }
